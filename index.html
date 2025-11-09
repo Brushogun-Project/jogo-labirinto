@@ -8,7 +8,7 @@
   :root{
     --bg:#121212;
     --wall:#333;
-    --player:#8ecae6; /* azul pastel */
+    --player:#8ecae6;
     --exit:#ff4444;
     --card:#222;
     --text:#fff;
@@ -84,9 +84,9 @@
   }
   button.control:active{transform:translateY(1px);}
 
-  /* ICONS — agora posicionados via JS (fixed), mas com default sizes */
+  /* ICONS */
   .icon-princess, .icon-meta {
-    position: fixed; /* placed by JS to align exactly with maze edges */
+    position: fixed;
     z-index:5;
     width:72px;
     height:72px;
@@ -96,8 +96,14 @@
   .icon-princess img, .icon-meta img { width:100%; height:100%; object-fit:contain; display:block; }
 
   @media (max-width:600px){
-    #maze{width:95vw;height:95vw;max-width:none;max-height:none;}
-    .icon-princess, .icon-meta { width:56px; height:56px; }
+    #maze {
+      width:95vw;
+      height:95vw;
+      max-width:none;
+      max-height:none;
+    }
+    #phase { font-weight:700; margin:4px 0; transition:opacity .6s; opacity:0.95; text-align:center; margin-bottom: 10vw; }
+
   }
 
   /* Overlays */
@@ -172,9 +178,9 @@
 
   <footer>Desenvolvido por Gabriel Matheus</footer>
 
-  <!-- Icons (positioned by JS) -->
+  <!-- Ícones -->
   <div id="princessIcon" class="icon-princess" aria-hidden="true">
-    <img src="PRINCESA.png" alt="Princesa">
+    <img src="PRINCESA.png" alt="Princesa" class="princesa">
   </div>
   <div id="metaIcon" class="icon-meta" aria-hidden="true">
     <img src="META.png" alt="Meta">
@@ -224,9 +230,8 @@ const directions = {
 };
 
 let playerPos, maze, size, level = 1, exitPos;
-const levels = [25, 32, 35]; // fase 3 = 35
+const levels = [25, 32, 35];
 
-/* Audio */
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playTone(freq,dur,vol=0.08){
   try{
@@ -241,7 +246,6 @@ function playStepSound(){ playTone(300,0.08,0.05); }
 function playWinSound(){ playTone(600,0.12,0.08); setTimeout(()=>playTone(820,0.12,0.08),140); }
 function playLevelSound(){ playTone(500,0.16,0.07); setTimeout(()=>playTone(400,0.16,0.07),200); }
 
-/* Maze generator (same as before) */
 function createMaze(n){
   const grid = Array.from({length:n},()=>Array(n).fill(1));
   function carve(x,y){
@@ -260,7 +264,6 @@ function createMaze(n){
   return grid;
 }
 
-/* Draw maze cells */
 function drawMaze(){
   mazeContainer.innerHTML='';
   mazeContainer.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
@@ -274,11 +277,9 @@ function drawMaze(){
       mazeContainer.appendChild(div);
     }
   }
-  // after drawing, reposition icons (in case size changed)
   positionIcons();
 }
 
-/* Player movement */
 function movePlayer(dx,dy){
   const nx=playerPos.x+dx, ny=playerPos.y+dy;
   if(nx<0||ny<0||nx>=size||ny>=size) return;
@@ -291,19 +292,13 @@ function movePlayer(dx,dy){
     const exitDivs=document.getElementsByClassName('exit');
     if(exitDivs.length) exitDivs[0].classList.add('flash');
     playWinSound();
-
     setTimeout(()=>{
-      if(level<3){
-        level++;
-        startLevel();
-      } else {
-        showEndOverlay();
-      }
+      if(level<3){ level++; startLevel(); }
+      else { showEndOverlay(); }
     },400);
   }
 }
 
-/* Start/Restart level */
 function startLevel(){
   size = levels[level-1];
   maze = createMaze(size);
@@ -311,14 +306,11 @@ function startLevel(){
   exitPos={x:size-2,y:size-2};
   drawMaze();
   phaseText.textContent = `Fase ${level} / 3`;
-  // trocar imagem da meta conforme fase
   const metas = ['META.png', 'META 2.png', 'META 3.png'];
-  // fade transition on meta change
   fadeChangeImage(metaImgEl, metas[level-1]);
   playLevelSound();
 }
 
-/* Controls */
 document.addEventListener('keydown', e=>{
   if(directions[e.key]){ e.preventDefault(); movePlayer(...directions[e.key]); }
 });
@@ -327,10 +319,8 @@ document.getElementById('down').onclick=()=>movePlayer(0,1);
 document.getElementById('left').onclick=()=>movePlayer(-1,0);
 document.getElementById('right').onclick=()=>movePlayer(1,0);
 
-/* Overlay blur */
 function setBlur(active){ mazeContainer.style.filter = active ? 'blur(6px) brightness(.9)' : 'none'; }
 
-/* Start/End overlay images responsive */
 function updateStartImage(){
   const isMobile = window.matchMedia("(max-width:600px)").matches;
   startImg.src = isMobile ? 'INICIO CELULAR.png' : 'INICIO PC.png';
@@ -342,91 +332,76 @@ function updateEndImage(){
   if(isMobile) endPanel.classList.add('small'); else endPanel.classList.remove('small');
 }
 
-/* Show/Hide overlays */
 function showStartOverlay(){ startOverlay.style.display='flex'; setBlur(true); updateStartImage(); }
 function hideStartOverlay(){ startOverlay.style.display='none'; setBlur(false); }
 function showEndOverlay(){ endOverlay.style.display='flex'; updateEndImage(); setBlur(true); }
 function hideEndOverlay(){ endOverlay.style.display='none'; setBlur(false); }
 
-/* Replay action */
-startBtn.addEventListener('click', ()=>{
-  try{ audioCtx.resume(); }catch(e){}
-  startPanel.style.transition = 'opacity .45s ease, transform .45s ease';
-  startPanel.style.opacity = '0';
-  startPanel.style.transform = 'scale(.96)';
-  setTimeout(()=> hideStartOverlay(), 480);
-});
+startBtn.addEventListener('click', ()=>{ try{ audioCtx.resume(); }catch(e){} hideStartOverlay(); });
+replayBtn.addEventListener('click', ()=>{ level = 1; startLevel(); hideEndOverlay(); });
 
-replayBtn.addEventListener('click', ()=>{
-  level = 1;
-  startLevel();
-  endPanel.style.transition='opacity .32s ease, transform .32s ease';
-  endPanel.style.opacity='0';
-  endPanel.style.transform='scale(.96)';
-  setTimeout(()=> hideEndOverlay(), 360);
-});
-
-/* Utility: fade an <img> src change smoothly */
-function fadeChangeImage(imgEl, newSrc){
-  imgEl.style.transition = 'opacity .22s ease';
-  imgEl.style.opacity = '0';
-  setTimeout(()=>{
-    imgEl.src = newSrc;
-    imgEl.onload = ()=> {
-      imgEl.style.opacity = '1';
-    };
-  }, 220);
+function fadeChangeImage(imgEl,newSrc){
+  imgEl.style.transition='opacity .22s ease';
+  imgEl.style.opacity='0';
+  setTimeout(()=>{ imgEl.src=newSrc; imgEl.onload=()=>imgEl.style.opacity='1'; },220);
 }
 
-/* ====== Position icons relative to maze ======
-   - princess: just outside top-left of maze (slightly above and to the left)
-   - meta: just outside bottom-right of maze (slightly below and to the right)
-   Uses fixed positioning so icons stay aligned to viewport even when overlays show.
-*/
+/* ====== Position icons (desktop vs celular) ====== */
 function positionIcons(){
-  const mazeRect = mazeContainer.getBoundingClientRect();
-  const gap = 12; // px gap between maze border and icon
-  // sizes (must match CSS sizes)
+  const isMobile = window.matchMedia("(max-width: 600px)").matches || /Mobi|Android/i.test(navigator.userAgent);
   const iconPrincess = princessIconEl;
   const iconMeta = metaIconEl;
+  const mazeRect = mazeContainer.getBoundingClientRect();
+  const gap = 12;
 
-  // read current icon sizes (in case CSS changed or viewport)
-  const princessW = iconPrincess.offsetWidth || 72;
-  const princessH = iconPrincess.offsetHeight || 72;
-  const metaW = iconMeta.offsetWidth || 72;
-  const metaH = iconMeta.offsetHeight || 72;
+  if (isMobile) {
+    // Princesa: acima e à esquerda do labirinto
+    iconPrincess.style.position = "absolute";
+    iconPrincess.style.left = Math.round(mazeRect.left - 10) + "px";
+    iconPrincess.style.top = Math.round(mazeRect.top - 70) + "px";
+    iconPrincess.style.right = "auto";
+    iconPrincess.style.bottom = "auto";
+    iconPrincess.style.transform = "none";
+    iconPrincess.style.width = "64px";
+    iconPrincess.style.height = "64px";
 
-  // calculate positions (use fixed coords)
-  // Princess: left of maze, align near top (slightly below top edge)
-  const princessLeft = Math.max(6, Math.round(mazeRect.left - princessW - gap));
-  const princessTop = Math.round(mazeRect.top + (mazeRect.height * 0.02)); // small offset from top
+    // Meta: abaixo e à direita do labirinto
+    iconMeta.style.position = "absolute";
+    iconMeta.style.left = "auto";
+    iconMeta.style.right = Math.round(window.innerWidth - mazeRect.right - 10) + "px";
+    iconMeta.style.top = "auto";
+    iconMeta.style.bottom = Math.round(window.innerHeight - mazeRect.bottom - 70) + "px";
+    iconMeta.style.transform = "none";
+  } else {
+    // Desktop: comportamento original
+    const princessW = iconPrincess.offsetWidth || 72;
+    const metaH = iconMeta.offsetHeight || 72;
+    const metaW = iconMeta.offsetWidth || 72;
+    const princessLeft = Math.max(6, Math.round(mazeRect.left - princessW - gap));
+    const princessTop = Math.round(mazeRect.top + (mazeRect.height * 0.02));
+    const metaLeft = Math.round(mazeRect.right + gap);
+    const metaTop = Math.round(mazeRect.bottom - metaH - (mazeRect.height * 0.02));
 
-  // Meta: right of maze, align near bottom (slightly above bottom edge)
-  const metaLeft = Math.round(mazeRect.right + gap);
-  const metaTop = Math.round(mazeRect.bottom - metaH - (mazeRect.height * 0.02));
+    iconPrincess.style.position = "fixed";
+    iconPrincess.style.left = princessLeft + "px";
+    iconPrincess.style.top = princessTop + "px";
 
-  // Apply positions (fixed)
-  iconPrincess.style.left = princessLeft + 'px';
-  iconPrincess.style.top = princessTop + 'px';
-
-  iconMeta.style.left = metaLeft + 'px';
-  iconMeta.style.top = metaTop + 'px';
+    iconMeta.style.position = "fixed";
+    iconMeta.style.left = metaLeft + "px";
+    iconMeta.style.top = metaTop + "px";
+  }
 }
 
-/* Reposition on resize, scroll, overlays, and after maze draw */
 window.addEventListener('resize', ()=>{ positionIcons(); updateStartImage(); updateEndImage(); });
 window.addEventListener('scroll', ()=>{ positionIcons(); });
 window.addEventListener('orientationchange', ()=>{ setTimeout(positionIcons,120); });
 
-/* initial call after layout */
 function init(){
   showStartOverlay();
   startLevel();
-  // ensure icons are positioned after first paint
   setTimeout(positionIcons, 100);
 }
 init();
-
 </script>
 </body>
 </html>
